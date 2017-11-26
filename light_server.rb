@@ -35,8 +35,14 @@ class LightServer
       if !authenticate || (authenticate && request.header["authorization"] && request.header["authorization"][0] == @token)
         if request.request_method == method
           params = parse_query_params(request.query_string)
+
+          # params passed from urls like /user/:user_id.
+          # they are set as strings, not symbols.
           params_from_url = parse_params_from_url(path, request.path)
           params_from_url.each { |k, v| params[k] = v }
+
+          # post params
+          request.query.each { |k, v| params[k] = v }
           resp = proc.call(params, request, response)
           response.body = resp
         else
