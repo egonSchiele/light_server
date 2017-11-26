@@ -1,8 +1,11 @@
 require "webrick"
 # A super light wrapper around webrick
 class LightServer
+
+  attr_accessor :token
   def initialize port = 1234
     @server = WEBrick::HTTPServer.new :Port => port
+    @token = nil
     trap('INT') { @server.shutdown }
   end
 
@@ -11,24 +14,36 @@ class LightServer
   end
 
   def get path, &proc
-    serve_with_method "GET", path, &proc
+    serve_with_method "GET", false, path, &proc
   end
 
   def post path, &proc
-    serve_with_method "POST", path, &proc
+    serve_with_method "POST", false, path, &proc
   end
 
-  def serve_with_method method, path, &proc
+  def get_with_auth path, &proc
+    serve_with_method "GET", true, path, &proc
+  end
+
+  def post_with_auth path, &proc
+    serve_with_method "POST", true, path, &proc
+  end
+
+  def serve_with_method method, authenticate, path, &proc
     path_without_params = remove_params_from_path(path)
     @server.mount_proc path_without_params do |request, response|
-      if request.request_method == method
-        params = parse_query_params(request.query_string)
-        params_from_url = parse_params_from_url(path, request.path)
-        params_from_url.each { |k, v| params[k] = v }
-        resp = proc.call(params, request, response)
-        response.body = resp
+      if !authenticate || (authenticate && request.header["authorization"] && request.header["authorization"][0] == @token)
+        if request.request_method == method
+          params = parse_query_params(request.query_string)
+          params_from_url = parse_params_from_url(path, request.path)
+          params_from_url.each { |k, v| params[k] = v }
+          resp = proc.call(params, request, response)
+          response.body = resp
+        else
+          response.body = "no handler for #{request.request_method}"
+        end
       else
-        response.body = "no handler for #{request.request_method}"
+        response.body = "invalid authentication"
       end
     end
   end
