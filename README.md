@@ -12,12 +12,17 @@ Features:
 ```ruby
 require_relative "light_server"
 @server = LightServer.new
+
 @server.get "/" do
   "hello world!"
 end
 
-@server.get "user/:user_id" do |params|
-  "you want to see info on user with id #{params["user_id"]}"
+@server.get "/user/:user_id" do |params|
+  "getting user with id #{params["user_id"]}"
+end
+
+@server.post "/a_url" do |params|
+  "you called this using a post"
 end
 
 @server.start

@@ -11,18 +11,29 @@ class LightServer
   end
 
   def get path, &proc
+    serve_with_method "GET", path, &proc
+  end
+
+  def post path, &proc
+    serve_with_method "POST", path, &proc
+  end
+
+  def serve_with_method method, path, &proc
     path_without_params = remove_params_from_path(path)
     @server.mount_proc path_without_params do |request, response|
-      params = parse_query_params(request.query_string)
-      params_from_url = parse_params_from_url(path, request.path)
-      params_from_url.each { |k, v| params[k] = v }
-      resp = proc.call(params, request, response)
-      response.body = resp
+      if request.request_method == method
+        params = parse_query_params(request.query_string)
+        params_from_url = parse_params_from_url(path, request.path)
+        params_from_url.each { |k, v| params[k] = v }
+        resp = proc.call(params, request, response)
+        response.body = resp
+      else
+        response.body = "no handler for #{request.request_method}"
+      end
     end
   end
 
   def parse_params_from_url path, request_path
-    p [path, request_path]
     return {} unless path.include?(":")
     path_sections = path.split("/")
     request_path_sections = request_path.split("/")
